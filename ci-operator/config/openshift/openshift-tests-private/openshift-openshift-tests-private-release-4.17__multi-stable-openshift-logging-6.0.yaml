@@ -37,15 +37,15 @@ resources:
       cpu: "1"
       memory: 1Gi
 tests:
-- as: aws-ipi-proxy-sts-mixarch-f7-logging
-  cron: 10 15 * * 4
+- as: aws-ipi-proxy-sts-mixarch-f14-logging
+  cron: 19 1 15,29 * *
   steps:
-    cluster_profile: aws-qe
+    cluster_profile: aws-observability
     env:
       ADDITIONAL_WORKER_ARCHITECTURE: x86_64
       ADDITIONAL_WORKER_VM_TYPE: m6i.xlarge
       ADDITIONAL_WORKERS: "1"
-      BASE_DOMAIN: qe.devcluster.openshift.com
+      BASE_DOMAIN: devobscluster.devcluster.openshift.com
       COMPUTE_NODE_REPLICAS: "2"
       COMPUTE_NODE_TYPE: m6g.xlarge
       CONTROL_PLANE_INSTANCE_TYPE: m6g.xlarge
@@ -61,8 +61,8 @@ tests:
             {"name": "amq-streams", "source": "redhat-operators", "channel": "stable", "install_namespace": "openshift-operators","target_namespaces": "", "operator_group": ""}
         ]
       TEST_ADDITIONAL: ""
-      TEST_FILTERS: CPaasrunOnly;CPaasrunBoth;~Disruptive&;~Longduration&
-      TEST_IMPORTANCE: ""
+      TEST_FILTERS: ~Disruptive&;~Longduration&;~AZWIF&;~AZMonitor&;~Splunk&;~GCL&
+      TEST_IMPORTANCE: Critical|High|Medium
       TEST_PARALLEL: "3"
       TEST_ROSA_LOGIN_ENV: ""
       TEST_SCENARIOS: sig-openshift-logging

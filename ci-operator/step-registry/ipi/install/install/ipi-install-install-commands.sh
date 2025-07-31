@@ -184,7 +184,7 @@ function capi_envtest_monitor() {
 # useful for components like observers. In the end, the complete kubeconfig will be copies
 # as before.
 function copy_kubeconfig_minimal() {
-  local dir=${1}
+  local dir=${1} temp_dir
   echo "waiting for ${dir}/auth/kubeconfig to exist"
   while [ ! -s  "${dir}/auth/kubeconfig" ]
   do
@@ -199,7 +199,10 @@ function copy_kubeconfig_minimal() {
   echo 'api available'
 
   echo 'waiting for bootstrap to complete'
-  ${INSTALLER_BINARY} --dir="${dir}" wait-for bootstrap-complete &
+  # create a temporary install working dir to avoid installer log combination
+  temp_dir=$(mktemp -d)
+  cp -rf "${dir}"/* "${temp_dir}/"
+  ${INSTALLER_BINARY} --dir="${temp_dir}" wait-for bootstrap-complete &
   wait "$!"
   ret=$?
   if [ $ret -eq 0 ]; then
@@ -286,8 +289,8 @@ function prepare_next_steps() {
 
 function inject_promtail_service() {
   export OPENSHIFT_INSTALL_INVOKER="openshift-internal-ci/${JOB_NAME}/${BUILD_ID}"
-  export PROMTAIL_IMAGE="quay.io/openshift-cr/promtail"
-  export PROMTAIL_VERSION="v2.4.1"
+  export PROMTAIL_IMAGE="quay.io/openshift-logging/promtail"
+  export PROMTAIL_VERSION="v3.4.3"
   export LOKI_ENDPOINT=https://logging-loki-openshift-operators-redhat.apps.cr.j7t7.p1.openshiftapps.com/api/logs/v1/openshift-trt/loki/api/v1
 
   config_dir=/tmp/promtail
@@ -562,8 +565,11 @@ if [[ -z "$OPENSHIFT_INSTALL_RELEASE_IMAGE_OVERRIDE" ]]; then
 fi
 
 if [[ -n "${CUSTOM_OPENSHIFT_INSTALL_RELEASE_IMAGE_OVERRIDE:-}" ]]; then
+  CUSTOM_PAYLOAD_DIGEST=$(oc adm release info "${CUSTOM_OPENSHIFT_INSTALL_RELEASE_IMAGE_OVERRIDE}" -a "${CLUSTER_PROFILE_DIR}/pull-secret" --output=jsonpath="{.digest}")
+  CUSTOM_OPENSHIFT_INSTALL_RELEASE_IMAGE_OVERRIDE="${CUSTOM_OPENSHIFT_INSTALL_RELEASE_IMAGE_OVERRIDE%:*}"@"$CUSTOM_PAYLOAD_DIGEST"
   echo "Overwrite OPENSHIFT_INSTALL_RELEASE_IMAGE_OVERRIDE to ${CUSTOM_OPENSHIFT_INSTALL_RELEASE_IMAGE_OVERRIDE} for cluster installation"
   export OPENSHIFT_INSTALL_RELEASE_IMAGE_OVERRIDE=${CUSTOM_OPENSHIFT_INSTALL_RELEASE_IMAGE_OVERRIDE}
+  echo "Extracting installer from ${OPENSHIFT_INSTALL_RELEASE_IMAGE_OVERRIDE}"
   oc adm release extract -a "${CLUSTER_PROFILE_DIR}/pull-secret" "${OPENSHIFT_INSTALL_RELEASE_IMAGE_OVERRIDE}" \
   --command=openshift-install --to="/tmp" || exit 1
   export INSTALLER_BINARY="/tmp/openshift-install"
@@ -600,6 +606,9 @@ azure4|azuremag|azure-arm64)
     if [[ -f "${SHARED_DIR}/azure_minimal_permission" ]]; then
         echo "Setting AZURE credential with minimal permissions for installer"
         export AZURE_AUTH_LOCATION=${SHARED_DIR}/azure_minimal_permission
+    elif [[ -f "${SHARED_DIR}/azure-sp-contributor.json" ]]; then
+        echo "Setting AZURE credential with Contributor role only for installer"
+        export AZURE_AUTH_LOCATION=${SHARED_DIR}/azure-sp-contributor.json
     else
         export AZURE_AUTH_LOCATION=${CLUSTER_PROFILE_DIR}/osServicePrincipal.json
     fi
@@ -615,9 +624,6 @@ gcp)
     if [ -f "${SHARED_DIR}/gcp_min_permissions.json" ]; then
       echo "$(date -u --rfc-3339=seconds) - Using the IAM service account for the minimum permissions testing on GCP..."
       export GOOGLE_CLOUD_KEYFILE_JSON="${SHARED_DIR}/gcp_min_permissions.json"
-    elif [ -f "${SHARED_DIR}/gcp_min_permissions_without_actas.json" ]; then
-      echo "$(date -u --rfc-3339=seconds) - Using the IAM service account, which hasn't the 'iam.serviceAccounts.actAs' permission, for the minimum permissions testing on GCP..."
-      export GOOGLE_CLOUD_KEYFILE_JSON="${SHARED_DIR}/gcp_min_permissions_without_actas.json"
     elif [ -f "${SHARED_DIR}/user_tags_sa.json" ]; then
       echo "$(date -u --rfc-3339=seconds) - Using the IAM service account for the userTags testing on GCP..."
       export GOOGLE_CLOUD_KEYFILE_JSON="${SHARED_DIR}/user_tags_sa.json"
@@ -696,7 +702,11 @@ set -o errexit
 
 # Platform specific manifests adjustments
 case "${CLUSTER_TYPE}" in
-azure4|azure-arm64) inject_boot_diagnostics ${dir} ;;
+azure4|azure-arm64)
+    if [[ "${BOOT_DIAGNOSTICS:-}" == "true" ]]; then
+      inject_boot_diagnostics ${dir}
+    fi
+    ;;
 aws|aws-arm64|aws-usgov)
     if [[ "${SPOT_INSTANCES:-}"  == 'true' ]]; then
       inject_spot_instance_config "${dir}" "workers"
@@ -771,20 +781,20 @@ export TF_LOG_PATH="${dir}/terraform.txt"
 # Cloud infrastructure problems are common, instead of failing and
 # forcing a retest of the entire job, try the installation again if
 # the installer exits with 4, indicating an infra problem.
-case $JOB_NAME in
-  *vsphere)
+case $CLUSTER_TYPE in
+  vsphere*)
     # Do not retry because `cluster destroy` doesn't properly clean up tags on vsphere.
     max=1
     ;;
-  *aws)
+  aws*)
     # Do not retry because aws resources can collide when re-using installer assets
     max=1
     ;;
-  *azure)
+  azure*)
     # Do not retry because azure resources always collide when re-using installer assets
     max=1
     ;;
-  *ibmcloud*)
+  ibmcloud*)
     # Do not retry because IBMCloud resources will has BucketAlreadyExists error when re-using installer assets
     max=1
     ;;

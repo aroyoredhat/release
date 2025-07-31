@@ -147,7 +147,7 @@ presubmits:
           secretName: result-aggregator
     trigger: (?m)^/test( | .* )e2e-aws-metrics,?($|\s.*)
   - agent: kubernetes
-    always_run: false
+    always_run: true
     branches:
     - ^release-4\.16$
     - ^release-4\.16-
@@ -160,7 +160,6 @@ presubmits:
       ci.openshift.io/generator: prowgen
       pj-rehearse.openshift.io/can-be-rehearsed: "true"
     name: pull-ci-openshift-hypershift-release-4.16-e2e-conformance
-    optional: true
     rerun_command: /test e2e-conformance
     spec:
       containers:
@@ -224,7 +223,7 @@ presubmits:
     branches:
     - ^release-4\.16$
     - ^release-4\.16-
-    cluster: build01
+    cluster: build03
     context: ci/prow/e2e-kubevirt-aws-ovn
     decorate: true
     labels:
@@ -297,12 +296,12 @@ presubmits:
     branches:
     - ^release-4\.16$
     - ^release-4\.16-
-    cluster: build01
+    cluster: build03
     context: ci/prow/e2e-kubevirt-aws-ovn-reduced
     decorate: true
     labels:
       ci-operator.openshift.io/cloud: aws
-      ci-operator.openshift.io/cloud-cluster-profile: aws
+      ci-operator.openshift.io/cloud-cluster-profile: aws-2
       ci.openshift.io/generator: prowgen
       pj-rehearse.openshift.io/can-be-rehearsed: "true"
     name: pull-ci-openshift-hypershift-release-4.16-e2e-kubevirt-aws-ovn-reduced
@@ -443,12 +442,12 @@ presubmits:
     branches:
     - ^release-4\.16$
     - ^release-4\.16-
-    cluster: build01
+    cluster: build03
     context: ci/prow/e2e-kubevirt-metal-ovn-conformance
     decorate: true
     labels:
       ci-operator.openshift.io/cloud: equinix-ocp-metal
-      ci-operator.openshift.io/cloud-cluster-profile: equinix-ocp-metal
+      ci-operator.openshift.io/cloud-cluster-profile: equinix-ocp-hcp
       ci.openshift.io/generator: prowgen
       pj-rehearse.openshift.io/can-be-rehearsed: "true"
     name: pull-ci-openshift-hypershift-release-4.16-e2e-kubevirt-metal-ovn-conformance
@@ -623,7 +622,7 @@ presubmits:
           secretName: result-aggregator
     trigger: (?m)^/test( | .* )mce-images,?($|\s.*)
   - agent: kubernetes
-    always_run: false
+    always_run: true
     branches:
     - ^release-4\.16$
     - ^release-4\.16-
@@ -637,7 +636,6 @@ presubmits:
       ci.openshift.io/generator: prowgen
       pj-rehearse.openshift.io/can-be-rehearsed: "true"
     name: pull-ci-openshift-hypershift-release-4.16-okd-scos-images
-    optional: true
     rerun_command: /test okd-scos-images
     spec:
       containers:

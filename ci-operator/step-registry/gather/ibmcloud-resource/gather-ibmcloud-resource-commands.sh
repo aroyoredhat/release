@@ -82,7 +82,9 @@ function gather_lb_resources {
             echo -e "\n\n\n# ibmcloud is lb-ps ${lb}\n"
             "${IBMCLOUD_CLI}" is lb-ps "${lb}"
             echo -e "\n\n\n# ibmcloud is lb-p ${lb} <pool>\n"
-	    "${IBMCLOUD_CLI}" is lb-ps "${lb}" -q | sed 1d | awk '{print $1}' | xargs -I % sh -c "${IBMCLOUD_CLI} is lb-p ${lb} %"
+            "${IBMCLOUD_CLI}" is lb-ps "${lb}" -q | sed 1d | awk '{print $1}' | xargs -I % sh -c "${IBMCLOUD_CLI} is lb-p ${lb} %"
+            echo -e "\n\n\n# ibmcloud is lb-pms ${lb} <pool>\n"
+            "${IBMCLOUD_CLI}" is lb-ps "${lb}" -q | sed 1d | awk '{print $1}' | xargs -I % sh -c "${IBMCLOUD_CLI} is lb-pms ${lb} %"
         } > "${RESOURCE_DUMP_DIR}/load-balancer-${lb}.txt"
     done
 }
@@ -114,6 +116,11 @@ function gather_cos {
 function gather_cis {
     echo -e "#ibmcloud_cis_instance_name: ${ibmcloud_cis_instance_name}\n"
     command_retry "${IBMCLOUD_CLI}" cis instance-set ${ibmcloud_cis_instance_name}
+
+    if [[ -z "${BASE_DOMAIN}" ]]; then
+        # Default the baseDomain if it hasn't been set, to the CI domain.
+        BASE_DOMAIN="ci-ibmcloud.devcluster.openshift.com"
+    fi
 
     echo -e "#baseDomain: ${BASE_DOMAIN}\n"
     cmd="${IBMCLOUD_CLI} cis domains -i ${ibmcloud_cis_instance_name} -o json | jq -r --arg n ${BASE_DOMAIN} '.[] | select(.name==\$n) | .id'"
@@ -199,6 +206,12 @@ ibmcloud_login
 ##in order to avoid "runtime error: invalid memory address or nil pointer dereference in 'ibmcloud is images -q'"
 if [ -f ${SHARED_DIR}/metadata.json ]; then
     RESOURCE_GROUP=$(jq -r .ibmcloud.resourceGroupName ${SHARED_DIR}/metadata.json)
+    echo "Resource group: $RESOURCE_GROUP"
+elif [ -s "${SHARED_DIR}/ibmcloud_cluster_resource_group" ]; then
+    RESOURCE_GROUP=$(cat "${SHARED_DIR}/ibmcloud_cluster_resource_group")
+    echo "Resource group: $RESOURCE_GROUP"    
+elif [ -s "${SHARED_DIR}/ibmcloud_resource_group" ]; then
+    RESOURCE_GROUP=$(cat "${SHARED_DIR}/ibmcloud_resource_group")
     echo "Resource group: $RESOURCE_GROUP"
 fi
 

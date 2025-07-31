@@ -23,8 +23,8 @@ resources:
       cpu: 100m
       memory: 200Mi
 tests:
-- as: loaded-upgrade416-24nodes
-  cron: 0 16 10,24 * *
+- always_run: false
+  as: loaded-upgrade416-24nodes
   steps:
     cluster_profile: aws-perfscale-qe
     env:
@@ -41,6 +41,7 @@ tests:
       NODE_UPGRADE_TIMEOUT: "14400"
       OCM_LOGIN_ENV: staging
       OPENSHIFT_VERSION: "4.15"
+      PPROF: "false"
       READY_WAIT_TIMEOUT: 30m
       REGION: us-west-2
       REPLICAS: "24"

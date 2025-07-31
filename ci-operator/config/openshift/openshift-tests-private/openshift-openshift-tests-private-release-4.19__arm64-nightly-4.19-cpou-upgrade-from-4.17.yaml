@@ -66,8 +66,10 @@ resources:
       cpu: 100m
       memory: 200Mi
 tests:
-- as: baremetalds-ipi-ovn-ipv4-f28
-  cron: 37 0 10 * *
+- as: baremetalds-ipi-ovn-ipv4-f999
+  capabilities:
+  - intranet
+  cron: 8 8 29 2 *
   steps:
     cluster_profile: equinix-ocp-metal-qe
     dependencies:
@@ -92,15 +94,16 @@ tests:
           cpu: 100m
           memory: 200Mi
     - chain: openshift-upgrade-qe-test-cpou
-    workflow: cucushift-installer-rehearse-baremetalds-ipi-ovn
-- as: gcp-ipi-proxy-private-f28
-  cron: 16 15 14 * *
+    workflow: cucushift-installer-rehearse-baremetalds-ipi-ovn-equinix
+- as: gcp-ipi-proxy-private-mini-perm-f999
+  cron: 8 8 29 2 *
   steps:
     cluster_profile: gcp-qe
     dependencies:
       OPENSHIFT_INSTALL_RELEASE_IMAGE_OVERRIDE: release:latest-arm64
     env:
       COMPUTE_NODE_TYPE: t2a-standard-4
+      GCP_INSTALL_USE_MINIMAL_PERMISSIONS: "yes"
       OCP_ARCH: arm64
     test:
     - as: set-upgrade-releases
